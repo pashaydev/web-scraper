@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: web-scraper
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    # If you need environment variables
+    environment:
+      - PORT=8080
+      - RATE_LIMIT=5
+    # Optional healthcheck
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
