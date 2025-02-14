@@ -2,11 +2,16 @@ package search
 
 import (
 	"github.com/gocolly/colly/v2"
+	"log"
 	"strings"
 	"web-scraper/internal/models"
 )
 
 type GoogleSearch struct{}
+
+func (g *GoogleSearch) GetName() string {
+	return "Google"
+}
 
 func (g *GoogleSearch) Search(query string) ([]models.SearchResult, error) {
 
@@ -29,5 +34,8 @@ func (g *GoogleSearch) Search(query string) ([]models.SearchResult, error) {
 
 	searchURL := "https://www.google.com/search?q=" + strings.ReplaceAll(query, " ", "+")
 	err := c.Visit(searchURL)
+
+	log.Println("Search results: ", results, " Search Engine: ", g.GetName())
+
 	return results, err
 }

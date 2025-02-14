@@ -4,7 +4,10 @@ go 1.23.4
 
 require (
 	github.com/gocolly/colly/v2 v2.1.0
+	github.com/joho/godotenv v1.5.1
+	github.com/liushuangls/go-anthropic/v2 v2.13.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/sashabaranov/go-openai v1.36.0
 	golang.org/x/time v0.8.0
 )
 

@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 	"web-scraper/internal/cache"
@@ -12,7 +14,7 @@ import (
 	"web-scraper/internal/search"
 )
 
-func SearchHandler(w http.ResponseWriter, r *http.Request) {
+func SearchDeepHandler(w http.ResponseWriter, r *http.Request) {
 	// Limitation
 	var limiter = handlersArgs.GetLimiter()
 	if !limiter.Allow() {
@@ -64,7 +66,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			log.Println("Searching engine:", engine.GetName())
 			log.Println("Searching query:", query)
-			results, err := e.Search(query)
+			results, err := e.DeepSearch(query)
 			if err != nil {
 				errorsChan <- err
 				return
@@ -106,8 +108,6 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		Duration:        time.Since(startTime).String(),
 	}
 
-	println(openAIResult)
-
 	// Store in cache
 	err1 := cache.GetInstance().Set(query, response)
 	if err1 != nil {
@@ -120,5 +120,60 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error encoding response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+}
+
+func formatSearchResultsForAI(query string, results []models.SearchResult) string {
+	var formattedText strings.Builder
+
+	// Add the query
+	formattedText.WriteString(fmt.Sprintf("Search Query: %s\n\n", query))
+
+	// Add search results
+	formattedText.WriteString("Search Results:\n")
+	for _, result := range results {
+		formattedText.WriteString(fmt.Sprintf("\nTitle: %s\n", result.Title))
+		formattedText.WriteString(fmt.Sprintf("URL: %s\n", result.Link))
+		formattedText.WriteString(fmt.Sprintf("Description: %s\n", result.Snippet))
+		formattedText.WriteString(fmt.Sprintf("PageContent: %s\n", result.InnerContent))
+	}
+
+	// Add instructions
+	formattedText.WriteString(`
+		Instructions:
+		You are tasked with generating a response based on the search results from a given query. The goal is to summarize the key information and insights from the search results in a clear and concise manner.
+		1. Review the search results and identify the most relevant and important information.
+		2. Summarize the key points and insights from the search results.
+		3. Provide a brief overview of the main topics and themes covered in the search results.
+		3. Use simple, straightforward language that is easy to understand.
+		4. Avoid repeating information or including unnecessary details.
+		5. Keep the response concise and focused on the main points.
+		7. Attach links to the original sources of information under each point.
+	`)
+
+	return formattedText.String()
+}
+
+func getOpenAIResults(query string, results []models.SearchResult) (string, error) {
+	resultChan := make(chan string, 1)
+	errChan := make(chan error, 1)
+
+	go func() {
+		var openAIClient = handlersArgs.GetOpenAiClient()
+		result, err := openAIClient.FormatResults(formatSearchResultsForAI(query, results))
+		if err != nil {
+			errChan <- err
+			return
+		}
+		resultChan <- result
+	}()
+
+	select {
+	case err := <-errChan:
+		return "", err
+	case result := <-resultChan:
+		return result, nil
+	case <-time.After(30 * time.Second):
+		return "", fmt.Errorf("AI processing timed out")
 	}
 }
