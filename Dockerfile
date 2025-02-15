@@ -1,7 +1,6 @@
-# Build stage
-FROM golang:1.23.4 AS builder
+FROM golang:1.23.4-alpine
 
-# Install git and SSL ca certificates for private repos (if needed)
+# Install git and SSL ca certificates for private repos
 RUN apk update && apk add --no-cache git ca-certificates tzdata && update-ca-certificates
 
 # Create appuser
@@ -33,17 +32,8 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app/scraper
 
-# Final stage
-FROM scratch
-
-# Import from builder
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
-
-# Copy binary from builder
-COPY --from=builder /app/scraper /scraper
+# Install necessary runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata
 
 # Use appuser
 USER appuser:appuser
@@ -52,4 +42,4 @@ USER appuser:appuser
 EXPOSE 8080
 
 # Run the binary
-ENTRYPOINT ["/scraper"]
+CMD ["/app/scraper"]

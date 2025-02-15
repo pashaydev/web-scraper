@@ -12,8 +12,10 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/scraper", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.SearchHandler)))
-	mux.HandleFunc("/scraper-deep", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.SearchDeepHandler)))
+	mux.HandleFunc("/api/login", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.Login)))
+	mux.HandleFunc("/api/signup", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.Signup)))
+	mux.HandleFunc("/api/scraper", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.SearchHandler)))
+	mux.HandleFunc("/api/scraper-deep", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.SearchDeepHandler)))
 	mux.HandleFunc("/health", handlers.HealthCheckHandler)
 	mux.HandleFunc("/cache/stats", handlers.CacheStatsHandler)
 	mux.HandleFunc("/cache/metrics", handlers.CacheMetricsHandler)
