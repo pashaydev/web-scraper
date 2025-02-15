@@ -12,13 +12,44 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/api/login", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.Login)))
-	mux.HandleFunc("/api/signup", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.Signup)))
-	mux.HandleFunc("/api/scraper", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.SearchHandler)))
-	mux.HandleFunc("/api/scraper-deep", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(handlers.SearchDeepHandler)))
+	// Public routes
+	mux.HandleFunc("/api/login", middleware.ChainMiddleware(
+		handlers.Login,
+		middleware.RecoveryMiddleware,
+		middleware.LoggingMiddleware,
+	))
+	mux.HandleFunc("/api/signup", middleware.ChainMiddleware(
+		handlers.Signup,
+		middleware.RecoveryMiddleware,
+		middleware.LoggingMiddleware,
+	))
 	mux.HandleFunc("/health", handlers.HealthCheckHandler)
-	mux.HandleFunc("/cache/stats", handlers.CacheStatsHandler)
-	mux.HandleFunc("/cache/metrics", handlers.CacheMetricsHandler)
+
+	// Protected routes
+	mux.HandleFunc("/api/scraper", middleware.ChainMiddleware(
+		handlers.SearchHandler,
+		middleware.AuthMiddleware,
+		middleware.RecoveryMiddleware,
+		middleware.LoggingMiddleware,
+	))
+	mux.HandleFunc("/api/scraper-deep", middleware.ChainMiddleware(
+		handlers.SearchDeepHandler,
+		middleware.AuthMiddleware,
+		middleware.RecoveryMiddleware,
+		middleware.LoggingMiddleware,
+	))
+	mux.HandleFunc("/cache/stats", middleware.ChainMiddleware(
+		handlers.CacheStatsHandler,
+		middleware.AuthMiddleware,
+		middleware.RecoveryMiddleware,
+		middleware.LoggingMiddleware,
+	))
+	mux.HandleFunc("/cache/metrics", middleware.ChainMiddleware(
+		handlers.CacheMetricsHandler,
+		middleware.AuthMiddleware,
+		middleware.RecoveryMiddleware,
+		middleware.LoggingMiddleware,
+	))
 
 	server := &http.Server{
 		Addr:         ":" + config.Config.Port,
